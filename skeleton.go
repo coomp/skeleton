@@ -27,7 +27,6 @@ func New() (s *Skeleton) {
 	// daemon hold request from switch
 	// when message received, process all callback
 	s = &Skeleton{}
-	s.StartWatch()
 	s.handles = append(s.handles, NewDefaultHandle())
 	return
 }
@@ -37,12 +36,14 @@ func (s *Skeleton) StartWatch() {
 	mqEndpointStr := GetOrDefault(MQ_ENDPOINT, "192.168.147.129:9876")
 	mqEndpoints := strings.SplitN(mqEndpointStr, ",", -1)
 	mqTopic := GetOrDefault(MQ_TOPIC, "coomp")
-	mqGroup := GetOrDefault(MQ_GROUP, "coomp_skeleton")
 
 	c, _ := rocketmq.NewPushConsumer(
-		consumer.WithGroupName(mqGroup),
 		consumer.WithNsResolver(primitive.NewPassthroughResolver(mqEndpoints)),
+		consumer.WithConsumerModel(consumer.Clustering),
+		consumer.WithConsumeFromWhere(consumer.ConsumeFromFirstOffset),
+		consumer.WithConsumerOrder(true),
 	)
+
 	err := c.Subscribe(mqTopic, consumer.MessageSelector{}, func(ctx context.Context,
 		msgs ...*primitive.MessageExt) (consumer.ConsumeResult, error) {
 		for i := range msgs {
